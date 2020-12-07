@@ -8,4 +8,4 @@ svg2png input.svg
 
 Nano SVG - https://github.com/memononen/nanosvg
 
-CImage Class- https://docs.microsoft.com/en-us/cpp/atl-mfc-shared/reference/cimage-class?view=msvc-160
+Windows Imaging Component - https://docs.microsoft.com/en-us/windows/win32/wic/-wic-lh
