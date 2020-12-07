@@ -1,0 +1,4 @@
+*.user
+*.aps
+/.vs
+/_bin
