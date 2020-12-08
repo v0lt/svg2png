@@ -16,6 +16,11 @@
 #define NANOSVGRAST_IMPLEMENTATION
 #include "../external/nanosvg/src/nanosvgrast.h"
 
+#include "../revision.h"
+#ifndef REV_NUM
+#define REV_NUM 0
+#endif
+
 #pragma comment(lib, "windowscodecs.lib")
 
 // simple convert ANSI string to wide character string
@@ -81,7 +86,8 @@ HRESULT NSVGimageToCImage(char* data, IWICImagingFactory* pWICFactory, IWICBitma
 
 int wmain(int argc, wchar_t* argv[])
 {
-	std::wcout << L"png2svg 0.1\n";
+	const std::wstring ver = L"png2svg 0.2 N-" + std::to_wstring(REV_NUM);
+	std::wcout << ver << L"\n";
 
 	if (argc > 1)
 	{
