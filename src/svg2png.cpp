@@ -29,59 +29,26 @@ inline const std::wstring A2WStr(const std::string_view& sv)
 	return std::wstring(sv.begin(), sv.end());
 }
 
-HRESULT NSVGimageToCImage(char* data, IWICImagingFactory* pWICFactory, IWICBitmap **ppWICBitmap, float scale)
+bool StrToUInt32(const wchar_t* str, uint32_t& value)
 {
-	NSVGimage* svgImage = nsvgParse(data, "px", 96.0f);
-
-	if (!svgImage) {
-		return E_FAIL;
+	wchar_t* end;
+	uint32_t v = wcstoul(str, &end, 10);
+	if (end > str) {
+		value = v;
+		return true;
 	}
+	return false;
+}
 
-	NSVGrasterizer* rasterizer = nsvgCreateRasterizer();
-	if (!rasterizer) {
-		nsvgDelete(svgImage);
-		return E_FAIL;
+bool StrToFloat(const wchar_t* str, float& value)
+{
+	wchar_t* end;
+	float v = wcstof(str, &end);
+	if (end > str) {
+		value = v;
+		return true;
 	}
-
-	int w = (int)std::round(svgImage->width * scale);
-	int h = (int)std::round(svgImage->height * scale);
-
-	HRESULT hr = pWICFactory->CreateBitmap(
-		w,
-		h,
-		GUID_WICPixelFormat32bppPRGBA,
-		WICBitmapCacheOnDemand,
-		ppWICBitmap);
-	if (FAILED(hr)) {
-		nsvgDeleteRasterizer(rasterizer);
-		nsvgDelete(svgImage);
-		return E_FAIL;
-	}
-
-	CComPtr<IWICBitmapLock> pWICBitmapLock;
-	WICRect rcLock = { 0, 0, w, h };
-	UINT uStride = 0;
-	BYTE* pData = nullptr;
-
-	hr = (*ppWICBitmap)->Lock(&rcLock, WICBitmapLockWrite, &pWICBitmapLock);
-	if (S_OK == hr) {
-		hr = pWICBitmapLock->GetStride(&uStride);
-		if (S_OK == hr) {
-			UINT cbBufferSize = 0;
-			hr = pWICBitmapLock->GetDataPointer(&cbBufferSize, &pData);
-		}
-	}
-
-	if (SUCCEEDED(hr)) {
-		nsvgRasterize(rasterizer, svgImage, 0.0f, 0.0f, scale, pData, w, h, uStride);
-	}
-
-	pWICBitmapLock.Release();
-
-	nsvgDeleteRasterizer(rasterizer);
-	nsvgDelete(svgImage);
-
-	return S_OK;
+	return false;
 }
 
 int wmain(int argc, wchar_t* argv[])
@@ -91,14 +58,61 @@ int wmain(int argc, wchar_t* argv[])
 
 	if (argc > 1)
 	{
+		std::wstring input_filename = argv[1];
+		std::wstring output_filename = input_filename + L".png";
+
 		HRESULT hr = S_OK;
 		std::wstring error;
-		std::wstring input_filename = argv[1];
+
+		uint32_t w = 0;
+		uint32_t h = 0;
+		float scale = 1.0;
+
 		FILE* file = nullptr;
+
+		NSVGimage* svgImage = nullptr;
+		NSVGrasterizer* rasterizer = nullptr;
+
 		CComPtr<IWICImagingFactory> pWICFactory;
 		CComPtr<IWICBitmap> pWICBitmap;
 
 		try {
+			for (int i = 2; i < argc; i++) {
+				if (wcscmp(argv[i], L"-w") == 0) {
+					if (i + 1 >= argc || !StrToUInt32(argv[i+1], w) || w == 0) {
+						error = L"Invalid width value!";
+						throw std::exception();
+					}
+					i++;
+				}
+				else if (wcscmp(argv[i], L"-h") == 0) {
+					if (i + 1 >= argc || !StrToUInt32(argv[i+1], h) || h == 0) {
+						error = L"Invalid height value!";
+						throw std::exception();
+					}
+					i++;
+				}
+				else if (wcscmp(argv[i], L"-scale") == 0) {
+					if (i + 1 >= argc || !StrToFloat(argv[i+1], scale) || scale <= 0) {
+						error = L"Invalid scale value!";
+						throw std::exception();
+					}
+					i++;
+				}
+				else if (i + 1 == argc) {
+					output_filename = argv[i];
+				}
+				else {
+					error = L"Invalid command line format!";
+					throw std::exception();
+				}
+			}
+
+			if (w && h || scale !=1 && (w || h)) {
+				error = L"Only one '-w', '-h', or '-scale' option is allowed!";
+				throw std::exception();
+			}
+
 			if (!std::filesystem::exists(input_filename)) {
 				error = L"The file \"" + input_filename + L"\" is missing!";
 				throw std::exception();
@@ -129,6 +143,15 @@ int wmain(int argc, wchar_t* argv[])
 			fclose(file);
 			file = nullptr;
 
+			svgImage = nsvgParse(fdata.get(), "px", 96.0f);
+			if (svgImage) {
+				rasterizer = nsvgCreateRasterizer();
+			}
+			if (!svgImage || !rasterizer) {
+				error = L"SVG parsing failed!";
+				throw std::exception();
+			}
+
 			hr = CoInitializeEx(nullptr, COINITBASE_MULTITHREADED);
 			if (FAILED(hr)) {
 				error = L"COM initialization failed!";
@@ -147,20 +170,63 @@ int wmain(int argc, wchar_t* argv[])
 				throw std::exception();
 			}
 
-			hr = NSVGimageToCImage(fdata.get(), pWICFactory, &pWICBitmap, 1);
+			if (!w && !h) {
+				w = (uint32_t)std::round(svgImage->width * scale);
+				h = (uint32_t)std::round(svgImage->height * scale);
+			}
+			else if (!w) {
+				scale = h / svgImage->height;
+				w = (uint32_t)std::round(svgImage->width * scale);
+			}
+			else if (!h) {
+				scale = w / svgImage->width;
+				h = (uint32_t)std::round(svgImage->height * scale);
+			}
+
+			hr = pWICFactory->CreateBitmap(
+				w,
+				h,
+				GUID_WICPixelFormat32bppPRGBA,
+				WICBitmapCacheOnDemand,
+				&pWICBitmap);
 			if (FAILED(hr)) {
-				error = L"Reading SVG file failed!";
+				error = L"WIC bitmap creation failed!";
 				throw std::exception();
 			}
+
+			CComPtr<IWICBitmapLock> pWICBitmapLock;
+			WICRect rcLock = { 0, 0, (INT)w, (INT)h };
+			UINT uStride = 0;
+			BYTE* pData = nullptr;
+
+			hr = pWICBitmap->Lock(&rcLock, WICBitmapLockWrite, &pWICBitmapLock);
+			if (SUCCEEDED(hr)) {
+				hr = pWICBitmapLock->GetStride(&uStride);
+			}
+			if (SUCCEEDED(hr)) {
+				UINT cbBufferSize = 0;
+				hr = pWICBitmapLock->GetDataPointer(&cbBufferSize, &pData);
+			}
+			if (SUCCEEDED(hr)) {
+				nsvgRasterize(rasterizer, svgImage, 0.0f, 0.0f, scale, pData, w, h, uStride);
+			}
+			if (FAILED(hr)) {
+				error = L"Converting SVG to bitmap failed!";
+				throw std::exception();
+			}
+
+			pWICBitmapLock.Release();
+
+			nsvgDeleteRasterizer(rasterizer);
+			rasterizer = nullptr;
+			nsvgDelete(svgImage);
+			svgImage = nullptr;
 
 			CComPtr<IWICStream> pStream;
 			CComPtr<IWICBitmapEncoder> pEncoder;
 			CComPtr<IWICBitmapFrameEncode> pFrameEncode;
 			WICPixelFormatGUID format = GUID_WICPixelFormatDontCare;
 			GUID_ContainerFormatPng;
-
-			std::wstring output_filename = input_filename + L".png";
-			UINT w, h;
 
 			hr = pWICBitmap->GetSize(&w, &h);
 			if (SUCCEEDED(hr)) {
@@ -213,6 +279,15 @@ int wmain(int argc, wchar_t* argv[])
 			file = nullptr;
 		}
 
+		if (rasterizer) {
+			nsvgDeleteRasterizer(rasterizer);
+			rasterizer = nullptr;
+		}
+
+		if (svgImage) {
+			nsvgDelete(svgImage);
+			svgImage = nullptr;
+		}
 	}
 
 	Sleep(2000);

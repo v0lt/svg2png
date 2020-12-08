@@ -2,7 +2,7 @@
 
 ## Usage
 
-svg2png input.svg
+svg2png input.svg [-w|h|scale value] [output.png]
 
 ## Links
 

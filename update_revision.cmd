@@ -20,7 +20,7 @@ ECHO LOCAL >> revision.h
 )
 
 <nul set /p strTemp=#define REV_NUM >> revision.h
-%gitexe% rev-list --branches=[m]ain --count >> revision.h
+%gitexe% rev-list --count HEAD >> revision.h
 IF %ERRORLEVEL% NEQ 0 (
 ECHO 0 >> revision.h
 )
