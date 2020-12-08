@@ -113,37 +113,39 @@ int wmain(int argc, wchar_t* argv[])
 				throw std::exception();
 			}
 
-			if (!std::filesystem::exists(input_filename)) {
-				error = L"The file \"" + input_filename + L"\" is missing!";
-				throw std::exception();
+			std::vector<char> buf;
+
+			if (wcscmp(input_filename.c_str(), L"-") == 0) {
+				const size_t block_size = 1024;
+				size_t len = 0;
+				do {
+					buf.resize(buf.size() + block_size);
+					std::cin.read(buf.data() + len, block_size);
+					len += (size_t)std::cin.gcount();
+				} while (len == buf.size());
+
+				buf.resize(len+1);
+			}
+			else if (_wfopen_s(&file, input_filename.c_str(), L"rb") == 0) {
+				fseek(file, 0, SEEK_END);
+				size_t len = ftell(file);
+				fseek(file, 0, SEEK_SET);
+
+				buf.resize(len+1);
+
+				size_t ret = fread(buf.data(), 1, len, file);
+				fclose(file);
+				file = nullptr;
+
+				if (ret != len) {
+					error = L"The file \"" + input_filename + L"\" could not be read!";
+					throw std::exception();
+				}
 			}
 
-			if (_wfopen_s(&file, input_filename.c_str(), L"rb") != 0) {
-				error = L"The file \"" + input_filename + L"\" could not be opened!";
-				throw std::exception();
-			}
+			buf[buf.size()-1] = '\0'; // Must be null terminated.
 
-			fseek(file, 0, SEEK_END);
-			size_t fsize = ftell(file);
-			fseek(file, 0, SEEK_SET);
-
-			std::unique_ptr<char[]> fdata(new(std::nothrow) char[fsize + 1]);
-			if (!fdata) {
-				error = L"Memory allocation error!";
-				throw std::exception();
-			}
-
-			if (fread(fdata.get(), 1, fsize, file) != fsize) {
-				error = L"The file \"" + input_filename + L"\" could not be read!";
-				throw std::exception();
-			}
-
-			fdata[fsize] = '\0'; // Must be null terminated.
-
-			fclose(file);
-			file = nullptr;
-
-			svgImage = nsvgParse(fdata.get(), "px", 96.0f);
+			svgImage = nsvgParse(buf.data(), "px", 96.0f);
 			if (svgImage) {
 				rasterizer = nsvgCreateRasterizer();
 			}
@@ -272,11 +274,6 @@ int wmain(int argc, wchar_t* argv[])
 		}
 		catch (...) {
 			std::wcout << L"ERROR:" << error << L"\n";
-		}
-
-		if (file) {
-			fclose(file);
-			file = nullptr;
 		}
 
 		if (rasterizer) {
