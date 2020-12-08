@@ -5,6 +5,7 @@
 #include <atlcomcli.h>
 
 #include <iostream>
+#include <memory>
 #include <filesystem>
 
 #define NANOSVG_IMPLEMENTATION
@@ -23,9 +24,9 @@ inline const std::wstring A2WStr(const std::string_view& sv)
 	return std::wstring(sv.begin(), sv.end());
 }
 
-HRESULT NSVGimageToCImage(LPCSTR filename, IWICImagingFactory* pWICFactory, IWICBitmap **ppWICBitmap, float scale)
+HRESULT NSVGimageToCImage(char* data, IWICImagingFactory* pWICFactory, IWICBitmap **ppWICBitmap, float scale)
 {
-	NSVGimage* svgImage = nsvgParseFromFile(filename, "px", 96.0f);
+	NSVGimage* svgImage = nsvgParse(data, "px", 96.0f);
 
 	if (!svgImage) {
 		return E_FAIL;
@@ -85,20 +86,46 @@ int main(int argc, char* argv[])
 	if (argc > 1) 
 	{
 		HRESULT hr = S_OK;
-		std::string error;
-		std::string input_filename = argv[1];
+		std::wstring error;
+		std::wstring input_filename = A2WStr(argv[1]);
+		FILE* file = nullptr;
 		CComPtr<IWICImagingFactory> pWICFactory;
 		CComPtr<IWICBitmap> pWICBitmap;
 
 		try {
 			if (!std::filesystem::exists(input_filename)) {
-				error = "The input file \"" + input_filename + "\" is missing!";
+				error = L"The file \"" + input_filename + L"\" is missing!";
 				throw std::exception();
 			}
 
+			if (_wfopen_s(&file, input_filename.c_str(), L"rb") != 0) {
+				error = L"The file \"" + input_filename + L"\" could not be opened!";
+				throw std::exception();
+			}
+
+			fseek(file, 0, SEEK_END);
+			size_t fsize = ftell(file);
+			fseek(file, 0, SEEK_SET);
+
+			std::unique_ptr<char[]> fdata(new(std::nothrow) char[fsize + 1]);
+			if (!fdata) {
+				error = L"Memory allocation error!";
+				throw std::exception();
+			}
+
+			if (fread(fdata.get(), 1, fsize, file) != fsize) {
+				error = L"The file \"" + input_filename + L"\" could not be read!";
+				throw std::exception();
+			}
+
+			fdata[fsize] = '\0'; // Must be null terminated.
+
+			fclose(file);
+			file = nullptr;
+
 			hr = CoInitializeEx(nullptr, COINITBASE_MULTITHREADED);
 			if (FAILED(hr)) {
-				error = "COM initialization failed!";
+				error = L"COM initialization failed!";
 				throw std::exception();
 			}
 
@@ -110,13 +137,13 @@ int main(int argc, char* argv[])
 				(LPVOID*)&pWICFactory
 			);
 			if (FAILED(hr)) {
-				error = "WIC initialization failed!";
+				error = L"WIC initialization failed!";
 				throw std::exception();
 			}
 
-			hr = NSVGimageToCImage(input_filename.c_str(), pWICFactory, &pWICBitmap, 1);
+			hr = NSVGimageToCImage(fdata.get(), pWICFactory, &pWICBitmap, 1);
 			if (FAILED(hr)) {
-				error = "Reading SVG file failed!";
+				error = L"Reading SVG file failed!";
 				throw std::exception();
 			}
 
@@ -126,7 +153,7 @@ int main(int argc, char* argv[])
 			WICPixelFormatGUID format = GUID_WICPixelFormatDontCare;
 			GUID_ContainerFormatPng;
 
-			std::wstring output_filename = A2WStr(input_filename) + L".png";
+			std::wstring output_filename = input_filename + L".png";
 			UINT w, h;
 
 			hr = pWICBitmap->GetSize(&w, &h);
@@ -165,15 +192,21 @@ int main(int argc, char* argv[])
 			}
 
 			if (FAILED(hr)) {
-				error = "PNG file write failed!";
+				error = L"PNG file write failed!";
 				throw std::exception();
 			}
 
-			std::cout << "The PNG file was written successfully!\n";
+			std::wcout << L"The PNG file was written successfully!\n";
 		}
 		catch (...) {
-			std::cout << "ERROR:" << error << "\n";
+			std::wcout << L"ERROR:" << error << L"\n";
 		}
+
+		if (file) {
+			fclose(file);
+			file = nullptr;
+		}
+
 	}
 
 	system("pause");
