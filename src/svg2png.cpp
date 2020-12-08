@@ -215,5 +215,5 @@ int wmain(int argc, wchar_t* argv[])
 
 	}
 
-	system("pause");
+	Sleep(2000);
 }
