@@ -79,15 +79,15 @@ HRESULT NSVGimageToCImage(char* data, IWICImagingFactory* pWICFactory, IWICBitma
 	return S_OK;
 }
 
-int main(int argc, char* argv[])
+int wmain(int argc, wchar_t* argv[])
 {
-	std::cout << "png2svg 0.1\n";
+	std::wcout << L"png2svg 0.1\n";
 
-	if (argc > 1) 
+	if (argc > 1)
 	{
 		HRESULT hr = S_OK;
 		std::wstring error;
-		std::wstring input_filename = A2WStr(argv[1]);
+		std::wstring input_filename = argv[1];
 		FILE* file = nullptr;
 		CComPtr<IWICImagingFactory> pWICFactory;
 		CComPtr<IWICBitmap> pWICBitmap;
