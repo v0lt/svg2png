@@ -5,8 +5,8 @@
 #include <atlcomcli.h>
 
 #include <iostream>
-#include <memory>
-#include <filesystem>
+#include <string>
+#include <vector>
 
 #define NANOSVG_IMPLEMENTATION
 #pragma warning(push)
