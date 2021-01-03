@@ -142,6 +142,10 @@ int wmain(int argc, wchar_t* argv[])
 					throw std::exception();
 				}
 			}
+			else {
+				error = L"File \"" + input_filename + L"\"  not found!";
+				throw std::exception();
+			}
 
 			buf[buf.size()-1] = '\0'; // Must be null terminated.
 
