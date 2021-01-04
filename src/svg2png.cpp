@@ -291,5 +291,7 @@ int wmain(int argc, wchar_t* argv[])
 		}
 	}
 
+#ifdef DEBUG
 	Sleep(2000);
+#endif
 }
