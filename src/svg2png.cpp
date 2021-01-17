@@ -16,10 +16,7 @@
 #define NANOSVGRAST_IMPLEMENTATION
 #include "../external/nanosvg/src/nanosvgrast.h"
 
-#include "../revision.h"
-#ifndef REV_NUM
-#define REV_NUM 0
-#endif
+#include "version.h"
 
 #pragma comment(lib, "windowscodecs.lib")
 
@@ -53,7 +50,7 @@ bool StrToFloat(const wchar_t* str, float& value)
 
 int wmain(int argc, wchar_t* argv[])
 {
-	const std::wstring ver = L"png2svg 0.2 N-" + std::to_wstring(REV_NUM);
+	const std::wstring ver = std::wstring(L"png2svg ") + VERSION_WSTR;
 	std::wcout << ver << L"\n";
 
 	if (argc > 1)

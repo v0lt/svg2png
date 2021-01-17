@@ -21,5 +21,8 @@
     <ClInclude Include="..\external\nanosvg\src\nanosvgrast.h">
       <Filter>nanosvg</Filter>
     </ClInclude>
+    <ClInclude Include="version.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
