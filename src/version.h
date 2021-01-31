@@ -17,11 +17,11 @@
 #define DO_MAKE_STR(x)  #x
 #define MAKE_STR(x)     DO_MAKE_STR(x)
 
-#define VER_RELEASE     1
+#define VER_RELEASE     0
 
 #define VER_MAJOR 0
 #define VER_MINOR 2
-#define VER_BUILD 1
+#define VER_BUILD 2
 
 #define VERSION_NUM     VER_MAJOR,VER_MINOR,VER_BUILD,REV_NUM
 #if VER_RELEASE
