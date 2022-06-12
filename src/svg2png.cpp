@@ -8,12 +8,13 @@
 #include <string>
 #include <vector>
 
+#define NANOSVG_ALL_COLOR_KEYWORDS
 #define NANOSVG_IMPLEMENTATION
+#define NANOSVGRAST_IMPLEMENTATION
 #pragma warning(push)
 #pragma warning(disable:4244)
 #include "../external/nanosvg/src/nanosvg.h"
 #pragma warning(pop)
-#define NANOSVGRAST_IMPLEMENTATION
 #include "../external/nanosvg/src/nanosvgrast.h"
 
 #include "version.h"
