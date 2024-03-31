@@ -288,6 +288,17 @@ int wmain(int argc, wchar_t* argv[])
 			svgImage = nullptr;
 		}
 	}
+	else {
+		std::wcout <<
+			L"SVG to PNG converter\n"
+			"usage: svg2png input.svg[-w|h|scale value] [output.png]\n"
+			"\n"
+			"  input.svg       name or path of the SVG file to convert\n"
+			"  -w <value>      sets the width in pixels\n"
+			"  -h <value>      sets the height in pixels\n"
+			"  -scale <value>  set the scale relative to the original size\n"
+			"  output.png      name or path of the resulting PNG file\n";
+	}
 
 #ifdef DEBUG
 	Sleep(2000);
